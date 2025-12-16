@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>坐躺两用摇动椅侧视图</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f4f4f4;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      position: relative;
+      width: 800px;
+      height: 500px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+    .mechanism { stroke: #444; stroke-width: 4; fill: none; }
+    .joint { fill: #333; stroke: #000; stroke-width: 1; }
+    .chair-frame { fill: #8B4513; stroke: #5D3A1F; stroke-width: 2; }
+    .chair-cushion { fill: #CD853F; stroke: #8B4513; stroke-width: 2; }
+    .rocker { fill: none; stroke: #5D3A1F; stroke-width: 8; }
+    .floor { stroke: #333; stroke-width: 3; }
+    .control-handle { fill: #A52A2A; stroke: #800000; stroke-width: 2; }
+    .control-panel {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .info {
+      margin: 10px 0;
+      font-size: 14px;
+    }
+    .label {
+      font-size: 12px;
+      fill: #333;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <svg viewBox="0 0 800 500" id="chair-svg">
+      <!-- 地板线 -->
+      <line x1="100" y1="450" x2="700" y2="450" stroke="#333" stroke-width="3" class="floor"/>
+      
+      <!-- 摇椅底座 -->
+      <path id="rocker" class="rocker" d="M 250 450 Q 400 480 550 450"/>
+      
+      <!-- 机架 - 固定于摇椅底座上的框架部分 -->
+      <path id="chair-base" class="chair-frame" d="M 300 350 L 380 350 L 380 400 L 300 400 Z"/>
+      
+      <!-- 座椅组 -->
+      <g id="chair-assembly">
+        <!-- 座位 -->
+        <rect id="seat" class="chair-cushion" x="300" y="330" width="200" height="30" rx="5"/>
+        
+        <!-- 扶手支架 -->
+        <path id="armrest-support" class="chair-frame" d="M 500 330 L 520 300 L 520 350 L 500 360 Z"/>
+        
+        <!-- 椅背框架 -->
+        <g id="backrest-group">
+          <rect id="backrest" class="chair-cushion" x="470" y="180" width="40" height="150" rx="5"/>
+          <path id="backrest-frame" class="chair-frame" d="M 490 180 L 510 180 L 510 330 L 490 330 Z"/>
+        </g>
+        
+        <!-- 腿托 -->
+        <rect id="footrest" class="chair-cushion" x="220" y="330" width="80" height="20" rx="5"/>
+      </g>
+
+      <!-- 调节连杆机构 -->
+      <!-- 后侧主支撑连杆 (支持椅背) -->
+      <line id="main-support" class="mechanism" x1="380" y1="370" x2="490" y2="250"/>
+      
+      <!-- 椅背铰链点 (椅背与座位的转动连接) -->
+      <circle id="backrest-pivot" cx="490" cy="330" r="8" class="joint"/>
+      
+      <!-- 支撑连杆铰链点 (支撑杆与座位的转动连接) -->
+      <circle id="support-pivot-base" cx="380" cy="370" r="8" class="joint"/>
+      
+      <!-- 支撑杆与椅背的连接点 -->
+      <circle id="support-pivot-back" cx="490" cy="250" r="8" class="joint"/>
+      
+      <!-- 调节杆组 (用于手动调节椅背角度) -->
+      <line id="control-rod" class="mechanism" x1="350" y1="400" x2="410" y2="270"/>
+      <circle id="control-pivot-base" cx="350" cy="400" r="8" class="joint"/>
+      <circle id="control-pivot-middle" cx="410" cy="270" r="8" class="joint"/>
+      
+      <!-- 连接调节杆与椅背的第二连杆 -->
+      <line id="second-control-rod" class="mechanism" x1="410" y1="270" x2="470" y2="230"/>
+      <circle id="control-pivot-back" cx="470" cy="230" r="8" class="joint"/>
+      
+      <!-- 手动调节手柄 -->
+      <circle id="control-handle" cx="330" cy="410" r="12" class="control-handle"/>
+      <line id="handle-link" class="mechanism" x1="330" y1="410" x2="350" y2="400"/>
+      
+      <!-- 腿托连杆 -->
+      <line id="footrest-link1" class="mechanism" x1="300" y1="360" x2="260" y2="340"/>
+      <line id="footrest-link2" class="mechanism" x1="260" y1="340" x2="260" y2="320"/>
+      <circle id="footrest-pivot1" cx="300" cy="360" r="6" class="joint"/>
+      <circle id="footrest-pivot2" cx="260" cy="340" r="6" class="joint"/>
+      <circle id="footrest-pivot3" cx="260" cy="320" r="6" class="joint"/>
+      
+      <!-- 标签 -->
+      <text x="490" y="170" class="label">椅背</text>
+      <text x="400" y="320" class="label">座位</text>
+      <text x="240" y="315" class="label">腿托</text>
+      <text x="480" y="240" class="label">连接点</text>
+      <text x="400" y="470" class="label">弧形摇动底座</text>
+      <text x="330" y="430" class="label">手动调节手柄</text>
+    </svg>
+  </div>
+
+  <div class="control-panel">
+    <button id="toggle-recline">调整坐躺角度</button>
+    <button id="toggle-rock">开始/停止摇动</button>
+    <button id="reset">重置椅子</button>
+  </div>
+
+  <div class="info">
+    机构说明：坐躺角度 90°~150°，摇动角度 25°，通过手柄调节坐躺角度，重力驱动摇摆
+  </div>
+
+  <script>
+    const chairAssembly = document.getElementById('chair-assembly');
+    const backrestGroup = document.getElementById('backrest-group');
+    const rocker = document.getElementById('rocker');
+    const mainSupport = document.getElementById('main-support');
+    const controlRod = document.getElementById('control-rod');
+    const secondControlRod = document.getElementById('second-control-rod');
+    const footrestLink1 = document.getElementById('footrest-link1');
+    const footrestLink2 = document.getElementById('footrest-link2');
+    const supportPivotBack = document.getElementById('support-pivot-back');
+    const controlPivotMiddle = document.getElementById('control-pivot-middle');
+    const controlPivotBack = document.getElementById('control-pivot-back');
+    const handleLink = document.getElementById('handle-link');
+    const controlHandle = document.getElementById('control-handle');
+    const footrest = document.getElementById('footrest');
+    
+    let isReclining = false;
+    let reclineAngle = 90; // 初始角度为90度（坐姿）
+    let isRocking = false;
+    let rockAngle = 0;
+    let rockDirection = 1;
+    let rockingInterval;
+    let recliningInterval;
+    
+    // 初始化椅子位置
+    function resetChair() {
+      reclineAngle = 90;
+      rockAngle = 0;
+      updateChairPosition();
+      
+      if (rockingInterval) {
+        clearInterval(rockingInterval);
+        isRocking = false;
+      }
+      
+      if (recliningInterval) {
+        clearInterval(recliningInterval);
+        isReclining = false;
+      }
+    }
+    
+    // 更新椅子位置
+    function updateChairPosition() {
+      // 计算椅背角度相关的变量
+      const reclineRad = (Math.PI / 180) * (180 - reclineAngle);
+      
+      // 椅背倾角旋转
+      backrestGroup.setAttribute('transform', `rotate(${90-reclineAngle} 490 330)`);
+      
+      // 更新支撑杆位置
+      const backX = 490 - 80 * Math.sin(reclineRad);
+      const backY = 250 - 80 * (1 - Math.cos(reclineRad));
+      mainSupport.setAttribute('x2', backX);
+      mainSupport.setAttribute('y2', backY);
+      supportPivotBack.setAttribute('cx', backX);
+      supportPivotBack.setAttribute('cy', backY);
+      
+      // 更新控制杆位置
+      const ctrlMidX = 410 - 30 * Math.sin(reclineRad/1.5);
+      const ctrlMidY = 270 - 30 * (1 - Math.cos(reclineRad/1.5));
+      controlRod.setAttribute('x2', ctrlMidX);
+      controlRod.setAttribute('y2', ctrlMidY);
+      controlPivotMiddle.setAttribute('cx', ctrlMidX);
+      controlPivotMiddle.setAttribute('cy', ctrlMidY);
+      
+      // 更新第二控制杆位置
+      const ctrlBackX = 470 - 30 * Math.sin(reclineRad);
+      const ctrlBackY = 230 - 30 * (1 - Math.cos(reclineRad));
+      secondControlRod.setAttribute('x1', ctrlMidX);
+      secondControlRod.setAttribute('y1', ctrlMidY);
+      secondControlRod.setAttribute('x2', ctrlBackX);
+      secondControlRod.setAttribute('y2', ctrlBackY);
+      controlPivotBack.setAttribute('cx', ctrlBackX);
+      controlPivotBack.setAttribute('cy', ctrlBackY);
+      
+      // 更新手柄位置
+      const handleX = 330 + 10 * Math.sin(reclineRad/2);
+      const handleY = 410 - 10 * (1 - Math.cos(reclineRad/2));
+      controlHandle.setAttribute('cx', handleX);
+      controlHandle.setAttribute('cy', handleY);
+      handleLink.setAttribute('x1', handleX);
+      handleLink.setAttribute('y1', handleY);
+      
+      // 更新腿托位置
+      const footrestAngle = (reclineAngle - 90) / 3; // 腿托的角度变化是椅背的一部分
+      footrest.setAttribute('transform', `translate(${(reclineAngle-90)*0.5}, ${(reclineAngle-90)*-0.3})`);
+      
+      // 更新腿托连杆位置
+      const footLinkX = 260 + (reclineAngle-90)*0.3;
+      const footLinkY = 340 - (reclineAngle-90)*0.2;
+      footrestLink1.setAttribute('x2', footLinkX);
+      footrestLink1.setAttribute('y2', footLinkY);
+      footrestLink2.setAttribute('x1', footLinkX);
+      footrestLink2.setAttribute('y1', footLinkY);
+      footrestLink2.setAttribute('x2', footLinkX);
+      footrestLink2.setAttribute('y2', footLinkY - 20);
+      
+      document.getElementById('footrest-pivot2').setAttribute('cx', footLinkX);
+      document.getElementById('footrest-pivot2').setAttribute('cy', footLinkY);
+      document.getElementById('footrest-pivot3').setAttribute('cx', footLinkX);
+      document.getElementById('footrest-pivot3').setAttribute('cy', footLinkY - 20);
+      
+      // 更新摇动位置
+      const rockRad = (Math.PI / 180) * rockAngle;
+      // 更新弧形底座位置
+      const rockerPath = `M 250 ${450-15*Math.sin(rockRad)} Q 400 ${480-15*Math.sin(rockRad)} 550 ${450-15*Math.sin(rockRad)}`;
+      rocker.setAttribute('d', rockerPath);
+      
+      // 整体椅子跟随摇动
+      chairAssembly.setAttribute('transform', `rotate(${rockAngle} 400 450)`);
+      
+      // 连杆机构也需要跟随摇动
+      const mechanismElements = document.querySelectorAll('.mechanism, .joint, #control-handle');
+      mechanismElements.forEach(element => {
+        if (element.id !== 'rocker') {
+          element.setAttribute('transform', `rotate(${rockAngle} 400 450)`);
+        }
+      });
+    }
+    
+    // 控制坐躺角度调节
+    document.getElementById('toggle-recline').addEventListener('click', function() {
+      if (isReclining) {
+        clearInterval(recliningInterval);
+        isReclining = false;
+        return;
+      }
+      
+      isReclining = true;
+      let targetAngle = reclineAngle === 90 ? 150 : 90;
+      
+      recliningInterval = setInterval(() => {
+        if (reclineAngle < targetAngle) {
+          reclineAngle += 1;
+        } else if (reclineAngle > targetAngle) {
+          reclineAngle -= 1;
+        } else {
+          clearInterval(recliningInterval);
+          isReclining = false;
+        }
+        updateChairPosition();
+      }, 30);
+    });
+    
+    // 控制摇动
+    document.getElementById('toggle-rock').addEventListener('click', function() {
+      if (isRocking) {
+        clearInterval(rockingInterval);
+        isRocking = false;
+        return;
+      }
+      
+      isRocking = true;
+      rockingInterval = setInterval(() => {
+        rockAngle += rockDirection * 0.5;
+        if (rockAngle >= 12.5) {
+          rockDirection = -1;
+        } else if (rockAngle <= -12.5) {
+          rockDirection = 1;
+        }
+        updateChairPosition();
+      }, 50);
+    });
+    
+    // 重置椅子
+    document.getElementById('reset').addEventListener('click', resetChair);
+    
+    // 初始化
+    resetChair();
+  </script>
+</body>
+</html>

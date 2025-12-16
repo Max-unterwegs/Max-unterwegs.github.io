@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能光照系统控制平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  
+  <!-- Tailwind配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3B82F6',
+            secondary: '#10B981',
+            warning: '#F59E0B',
+            danger: '#EF4444',
+            dark: '#1E293B',
+            light: '#F8FAFC'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .gradient-bg {
+        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      }
+      .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+  <!-- 登录模态框 -->
+  <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
+      <div class="text-center mb-6">
+        <i class="fa fa-lock text-4xl text-primary mb-4"></i>
+        <h2 class="text-2xl font-bold text-gray-800">登录控制中心</h2>
+        <p class="text-gray-500 mt-2">请使用账号密码登录系统</p>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">账号</label>
+          <input type="text" id="loginUsername" placeholder="输入账号" 
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+          <input type="password" id="loginPassword" placeholder="输入密码" 
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition">
+        </div>
+        <div class="text-red-500 text-sm hidden" id="loginError">
+          账号或密码错误
+        </div>
+        <button id="loginBtn" class="w-full bg-primary hover:bg-blue-600 text-white py-3 px-4 rounded-lg transition-colors flex items-center justify-center font-semibold">
+          <i class="fa fa-sign-in mr-2"></i>登录
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 顶部导航栏 -->
+  <header class="gradient-bg text-white shadow-md">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <i class="fa fa-microchip text-2xl"></i>
+        <h1 class="text-xl md:text-2xl font-bold">智能光照系统控制平台</h1>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="hidden md:flex items-center space-x-2 bg-white bg-opacity-20 px-3 py-1 rounded-full">
+          <i class="fa fa-user-circle"></i>
+          <span id="currentUser">用户</span>
+        </div>
+        <button id="themeToggle" class="p-2 rounded-full hover:bg-blue-600 transition-colors">
+          <i class="fa fa-moon-o"></i>
+        </button>
+        <button id="helpBtn" class="p-2 rounded-full hover:bg-blue-600 transition-colors">
+          <i class="fa fa-question-circle"></i>
+        </button>
+        <button id="logoutBtn" class="p-2 rounded-full hover:bg-blue-600 transition-colors">
+          <i class="fa fa-sign-out"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="flex-grow container mx-auto px-4 py-6">
+    <!-- 连接状态与控制区 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <!-- 连接设置卡片 -->
+      <div class="bg-white rounded-xl p-5 card-shadow transition-all hover:shadow-lg">
+        <h2 class="text-lg font-semibold mb-4 flex items-center">
+          <i class="fa fa-plug text-primary mr-2"></i>连接设置
+        </h2>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">用户私钥 (UID)</label>
+            <input type="password" id="uid" placeholder="输入巴法云私钥" 
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition">
+          </div>
+          
+          <!-- 区分控制主题和传感器主题 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">控制主题 (Control Topic)</label>
+              <input type="password" id="controlTopic" placeholder="例如: light002_ctrl" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">传感器主题 (Sensor Topic)</label>
+              <input type="password" id="sensorTopic" placeholder="例如: light002_sensor" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition">
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">协议类型</label>
+            <div class="flex space-x-4">
+              <label class="inline-flex items-center">
+                <input type="radio" name="protocol" value="3" checked class="text-primary focus:ring-primary">
+                <span class="ml-2">TCP协议 (3)</span>
+              </label>
+              <label class="inline-flex items-center">
+                <input type="radio" name="protocol" value="1" class="text-primary focus:ring-primary">
+                <span class="ml-2">MQTT协议 (1)</span>
+              </label>
+            </div>
+          </div>
+          
+          <!-- 自动刷新传感器数据配置 -->
+          <div>
+            <div class="flex items-center justify-between text-sm font-medium text-gray-700 mb-1">
+              <div class="flex items-center">
+                <input type="checkbox" id="autoRefreshToggle" class="form-checkbox text-primary focus:ring-primary" checked>
+                <label for="autoRefreshToggle" class="ml-2">自动刷新传感器数据</label>
+              </div>
+              <span id="autoRefreshText">开启</span>
+            </div>
+            <div class="mt-1 flex items-center">
+              <label class="text-xs text-gray-500 mr-2">刷新间隔：</label>
+              <input type="number" id="refreshInterval" value="2" min="0.1" max="30" step="0.1"
+                    class="w-16 px-2 py-1 text-sm border border-gray-300 rounded-lg">
+              <span class="text-xs text-gray-500 ml-1">秒</span>
+            </div>
+          </div>
+          
+          <div class="pt-2">
+            <button id="connectBtn" class="w-full bg-primary hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center">
+              <i class="fa fa-connectdevelop mr-2"></i>连接设备
+            </button>
+          </div>
+          
+          <div class="flex items-center text-sm">
+            <span class="status-indicator bg-gray-300 mr-2" id="connectionStatus"></span>
+            <span id="connectionText">未连接</span>
+            <span class="status-indicator bg-gray-300 ml-4 mr-2" id="sensorStatus"></span>
+            <span id="sensorText">传感器未同步</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 设备信息卡片 -->
+      <div class="bg-white rounded-xl p-5 card-shadow transition-all hover:shadow-lg">
+        <h2 class="text-lg font-semibold mb-4 flex items-center">
+          <i class="fa fa-info-circle text-primary mr-2"></i>设备信息
+        </h2>
+        
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500">设备类型</p>
+              <p class="font-medium" id="deviceType">未知</p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500">连接时间</p>
+              <p class="font-medium" id="connectionTime">--:--:--</p>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500">GPIO2状态</p>
+              <p class="font-medium" id="gpio2Status">未获取</p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500">WS2812灯效</p>
+              <p class="font-medium" id="ws2812Effect">未获取</p>
+            </div>
+          </div>
+          
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <p class="text-xs text-gray-500">当前模式</p>
+            <p class="font-medium" id="currentMode">未获取</p>
+            <p class="text-xs text-gray-400">(0=自动, 1=手动, 2=关闭照明)</p>
+          </div>
+          
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <p class="text-xs text-gray-500">调节模式</p>
+            <p class="font-medium" id="adjustMode">未获取</p>
+            <p class="text-xs text-gray-400">(0=调光, 1=调色温)</p>
+          </div>
+          
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <p class="text-xs text-gray-500">人体传感器</p>
+            <p class="font-medium" id="motionSensorStatus">未获取</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 快速控制卡片 -->
+      <div class="bg-white rounded-xl p-5 card-shadow transition-all hover:shadow-lg">
+        <h2 class="text-lg font-semibold mb-4 flex items-center">
+          <i class="fa fa-bolt text-primary mr-2"></i>快速控制
+        </h2>
+        
+        <div class="space-y-4">
+          <div class="grid grid-cols-3 gap-2">
+            <button data-mode="0" class="mode-btn bg-blue-100 hover:bg-blue-200 text-blue-800 py-2 rounded-lg transition-colors">
+              <i class="fa fa-cog block text-center mb-1"></i>
+              <span class="text-xs">自动模式</span>
+            </button>
+            <button data-mode="1" class="mode-btn bg-green-100 hover:bg-green-200 text-green-800 py-2 rounded-lg transition-colors">
+              <i class="fa fa-hand-paper-o block text-center mb-1"></i>
+              <span class="text-xs">手动模式</span>
+            </button>
+            <button data-mode="2" class="mode-btn bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 rounded-lg transition-colors">
+              <i class="fa fa-clock-o block text-center mb-1"></i>
+              <span class="text-xs">关闭照明</span>
+            </button>
+          </div>
+          
+          <!-- 发送模式控制 -->
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <label class="block text-sm font-medium text-gray-700 mb-2">发送模式</label>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                <input type="checkbox" id="autoSendToggle" class="form-checkbox text-primary focus:ring-primary">
+                <label for="autoSendToggle" class="ml-2 text-sm text-gray-700">自动发送模式</label>
+              </div>
+              <span id="autoSendText" class="text-sm font-medium">关闭</span>
+            </div>
+            
+            <div class="mt-3 flex items-center space-x-2">
+              <label for="autoSendTime" class="text-sm text-gray-600">自动发送时间:</label>
+              <input type="number" id="autoSendTime" min="0.1" max="3600" step="0.1" value="10" class="w-16 px-2 py-1 border border-gray-300 rounded-lg text-sm">
+              <span class="text-sm text-gray-500">秒</span>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">WS2812 灯效控制</label>
+            <div class="flex space-x-2">
+              <button id="prevEffect" class="flex-1 bg-gray-100 hover:bg-gray-200 py-2 rounded-lg transition-colors">
+                <i class="fa fa-step-backward"></i>
+              </button>
+              <button id="nextEffect" class="flex-1 bg-gray-100 hover:bg-gray-200 py-2 rounded-lg transition-colors">
+                <i class="fa fa-step-forward"></i>
+              </button>
+              <button id="stopEffect" class="flex-1 bg-gray-100 hover:bg-gray-200 py-2 rounded-lg transition-colors">
+                <i class="fa fa-stop"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div>
+            <div class="flex items-center justify-between text-sm font-medium text-gray-700">
+              <div class="flex items-center">
+                <input type="checkbox" id="motionAffectToggle" class="form-checkbox text-primary focus:ring-primary">
+                <label for="motionAffectToggle" class="ml-2">人体传感器影响</label>
+              </div>
+              <span id="motionAffectText">关闭</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 详细控制与数据显示区 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <!-- 亮度控制 -->
+      <div class="bg-white rounded-xl p-5 card-shadow transition-all hover:shadow-lg">
+        <h2 class="text-lg font-semibold mb-4 flex items-center">
+          <i class="fa fa-sun-o text-warning mr-2"></i>亮度控制
+        </h2>
+        
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span id="brightnessLabel">亮度值</span>
+              <span id="brightnessValue">0</span>
+            </div>
+            <input type="range" id="brightnessSlider" min="0" max="100" value="50" 
+                  class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary">
+          </div>
+          
+          <div class="flex justify-between">
+            <button id="brightnessMinus" class="bg-gray-100 hover:bg-gray-200 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+              <i class="fa fa-minus"></i>
+            </button>
+            <button id="brightnessPlus" class="bg-gray-100 hover:bg-gray-200 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+              <i class="fa fa-plus"></i>
+            </button>
+          </div>
+          
+          <div class="mt-2 p-3 bg-blue-50 rounded-lg text-sm">
+            <p><i class="fa fa-info-circle text-blue-500 mr-1"></i> 自动模式下控制目标照度，手动模式下控制直接亮度</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 色温控制 -->
+      <div class="bg-white rounded-xl p-5 card-shadow transition-all hover:shadow-lg">
+        <h2 class="text-lg font-semibold mb-4 flex items-center">
+          <i class="fa fa-thermometer-half text-primary mr-2"></i>色温控制
+        </h2>
+        
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span>冷光</span>
+              <span id="colorTempValue">50%</span>
+              <span>暖光</span>
+            </div>
+            <input type="range" id="colorTempSlider" min="0" max="100" value="50" 
+                  class="w-full h-2 bg-gradient-to-r from-blue-400 to-yellow-400 rounded-lg appearance-none cursor-pointer">
+          </div>
+          
+          <div class="flex justify-between">
+            <button id="tempMinus" class="bg-blue-100 hover:bg-blue-200 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+              <i class="fa fa-minus"></i>
+            </button>
+            <button id="tempPlus" class="bg-yellow-100 hover:bg-yellow-200 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+              <i class="fa fa-plus"></i>
+            </button>
+          </div>
+          
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <div class="p-3 bg-blue-50 rounded-lg text-center text-sm">
+              <i class="fa fa-snowflake-o text-blue-500 block mb-1"></i>
+              <span>冷光</span>
+            </div>
+            <div class="p-3 bg-yellow-50 rounded-lg text-center text-sm">
+              <i class="fa fa-fire text-yellow-500 block mb-1"></i>
+              <span>暖光</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 传感器数据 -->
+      <div class="bg-white rounded-xl p-5 card-shadow transition-all hover:shadow-lg">
+        <h2 class="text-lg font-semibold mb-4 flex items-center">
+          <i class="fa fa-line-chart text-secondary mr-2"></i>传感器数据
+        </h2>
+        
+        <div class="space-y-4">
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <p class="text-xs text-gray-500">当前光照</p>
+            <p class="text-2xl font-bold" id="currentLux">0</p>
+            <p class="text-xs text-gray-500">lux</p>
+          </div>
+          
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <p class="text-xs text-gray-500">滤波后光照</p>
+            <p class="text-2xl font-bold" id="filteredLux">0</p>
+            <p class="text-xs text-gray-500">lux</p>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500">白光输出</p>
+              <p class="text-xl font-bold" id="whiteOutput">0</p>
+              <p class="text-xs text-gray-400">PWM值</p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500">暖光输出</p>
+              <p class="text-xl font-bold" id="warmOutput">0</p>
+              <p class="text-xs text-gray-400">PWM值</p>
+            </div>
+          </div>
+          
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <p class="text-xs text-gray-500">最后数据更新时间</p>
+            <p class="font-medium" id="lastUpdateTime">--:--:--</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 图表与日志区域 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 光照趋势图表 -->
+      <div class="lg:col-span-2 bg-white rounded-xl p-5 card-shadow transition-all hover:shadow-lg">
+        <h2 class="text-lg font-semibold mb-4 flex items-center">
+          <i class="fa fa-area-chart text-primary mr-2"></i>光照趋势图
+        </h2>
+        
+        <div class="h-64">
+          <canvas id="luxChart"></canvas>
+        </div>
+      </div>
+      
+      <!-- 消息日志 -->
+      <div class="bg-white rounded-xl p-5 card-shadow transition-all hover:shadow-lg">
+        <h2 class="text-lg font-semibold mb-4 flex items-center">
+          <i class="fa fa-list-alt text-primary mr-2"></i>消息日志
+        </h2>
+        
+        <div id="messageLog" class="h-64 overflow-y-auto bg-gray-50 p-3 rounded-lg text-sm space-y-1 text-gray-700">
+          <div class="text-gray-500"><i class="fa fa-info-circle mr-1"></i> 日志将显示在这里...</div>
+        </div>
+        
+        <div class="flex space-x-2 mt-3">
+          <button id="clearLogBtn" class="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+            <i class="fa fa-trash-o mr-1"></i>清空日志
+          </button>
+          <button id="syncSensorBtn" class="text-xs text-primary hover:text-blue-600 transition-colors">
+            <i class="fa fa-refresh mr-1"></i>手动同步传感器数据
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-dark text-white py-6">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="mb-4 md:mb-0">
+          <p class="text-sm">@ 2025 Max_unterwegs</p>
+        </div>
+        <div class="flex space-x-4">
+          <a href="#" class="text-gray-300 hover:text-white transition-colors">
+            <i class="fa fa-question-circle"></i> 帮助
+          </a>
+          <a href="#" class="text-gray-300 hover:text-white transition-colors">
+            <i class="fa fa-file-text-o"></i> 文档
+          </a>
+          <a href="#" class="text-gray-300 hover:text-white transition-colors">
+            <i class="fa fa-envelope-o"></i> 联系我
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 帮助模态框 -->
+  <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold">使用帮助</h3>
+        <button id="closeHelpBtn" class="text-gray-500 hover:text-gray-700">
+          <i class="fa fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <div class="space-y-4 text-sm">
+        <div>
+          <h4 class="font-semibold mb-1">连接设备</h4>
+          <p>1. 输入从巴法云控制台获取的私钥(UID)</p>
+          <p>2. 分别输入控制主题和传感器主题（需与单片机配置一致）</p>
+          <p>3. 选择设备使用的协议类型(TCP或MQTT)</p>
+          <p>4. 点击"连接设备"按钮</p>
+        </div>
+        
+        <div>
+          <h4 class="font-semibold mb-1">主题说明</h4>
+          <p>• 控制主题：用于向下位机发送控制指令（如模式切换、亮度调节）</p>
+          <p>• 传感器主题：用于接收下位机上报的传感器数据（如光照值、PWM输出）</p>
+          <p>• 建议命名规则：设备名+_ctrl / 设备名+_sensor</p>
+        </div>
+        
+        <div>
+          <h4 class="font-semibold mb-1">设备控制</h4>
+          <p>1. 可通过模式按钮切换自动/手动/关闭模式</p>
+          <p>2. 亮度滑块在自动模式下控制目标照度，手动模式下控制直接亮度</p>
+          <p>3. 色温滑块控制冷光和暖光的比例</p>
+          <p>4. 可通过按钮切换WS2812灯效</p>
+        </div>
+        
+        <div>
+          <h4 class="font-semibold mb-1">数据查看</h4>
+          <p>1. 传感器数据区域显示当前光照和设备输出状态</p>
+          <p>2. 光照趋势图展示历史光照变化</p>
+          <p>3. 消息日志记录所有通信和状态变化</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 全局变量
+    let isConnected = false;
+    let luxData = [];
+    let timeLabels = [];
+    let luxChart = null;
+    let currentEffect = 0;
+    const MAX_EFFECTS = 10; // 根据实际灯效数量调整
+    let isLoggedIn = false;
+    
+    // 色温转换函数已移除，恢复为直接显示百分比
+    
+    // 用户配置数据
+    const userData = {
+      "admin": {
+        "password": "admin123",
+        "uid": "75107f8b9294c6cea97aed9aa87ff40d",
+        "controlTopic": "sphdL3y7o002",
+        "sensorTopic": "Xc4E8faNz004"
+      }
+    };
+    
+    // 定时器变量
+    let dataSimulationInterval = null;
+    let sensorDataInterval = null;
+    
+    // 声明DOM元素变量，但不立即获取
+    let connectBtn, uidInput, controlTopicInput, sensorTopicInput, connectionStatus, connectionText, sensorStatus, sensorText, messageLog, clearLogBtn, syncSensorBtn, helpBtn, helpModal, closeHelpBtn, autoRefreshToggle, autoRefreshText, refreshIntervalInput;
+    let loginModal, loginUsername, loginPassword, loginBtn, loginError, logoutBtn, currentUser;
+    
+    // 初始化图表
+    function initChart() {
+      const ctx = document.getElementById('luxChart').getContext('2d');
+      luxChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: timeLabels,
+          datasets: [
+            {
+              label: '当前光照 (lux)',
+              data: luxData,
+              borderColor: '#3B82F6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              tension: 0.3,
+              fill: true
+            },
+            {
+              label: '滤波后光照 (lux)',
+              data: [],
+              borderColor: '#10B981',
+              backgroundColor: 'rgba(16, 185, 129, 0.05)',
+              tension: 0.3,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: '光照值 (lux)'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: '时间'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false
+            }
+          },
+          interaction: {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false
+          }
+        }
+      });
+    }
+    
+    // 添加日志消息
+    function addLog(message, isError = false, isSensor = false) {
+      const time = new Date().toLocaleTimeString();
+      const logEntry = document.createElement('div');
+      
+      // 区分控制日志和传感器日志
+      if (isSensor) {
+        logEntry.className = isError ? 'text-red-600' : 'text-green-600';
+        logEntry.innerHTML = `<span class="text-gray-500">[${time}][传感器]</span> ${message}`;
+      } else {
+        logEntry.className = isError ? 'text-red-600' : '';
+        logEntry.innerHTML = `<span class="text-gray-500">[${time}][控制]</span> ${message}`;
+      }
+      
+      messageLog.appendChild(logEntry);
+      messageLog.scrollTop = messageLog.scrollHeight;
+    }
+    
+    // 解析传感器数据（匹配TCP通信协议格式）
+    function parseSensorData(dataStr) {
+      try {
+        // TCP通信协议格式：#lightMode#adjustMode#gpio2Value#motionDetected#motionAffectsLight#rawLux#filteredLux#targetBrightness#colorTempRatio#led1Brightness#led2Brightness#ws2812Effect#
+        const parts = dataStr.split('#').filter(part => part !== '');
+        addLog(`传感器数据解析：${parts}`, false, true); // 调试用
+        if (parts.length >= 12) {
+          return {
+            lightMode: parseInt(parts[0]),
+            adjustMode: parseInt(parts[1]),
+            gpio2Value: parseInt(parts[2]),
+            motionDetected: parseInt(parts[3]) === 1,
+            motionAffectsLight: parseInt(parts[4]) === 1,
+            luxValue: parseInt(parts[5]),
+            filteredLuxValue: parseInt(parts[6]),
+            targetBrightness: parseInt(parts[7]),
+            colorTempRatio: parseInt(parts[8]),
+            whiteOutput: parseInt(parts[9]),
+            warmOutput: parseInt(parts[10]),
+            ws2812Effect: parseInt(parts[11])
+          };
+        }
+        addLog(`传感器数据格式错误: ${dataStr}（长度：${parts.length}）`, true, true);
+        return null;
+      } catch (e) {
+        addLog(`解析传感器数据失败: ${e.message}`, true, true);
+        return null;
+      }
+    }
+    
+    // 获取传感器数据（增强错误处理版）
+    async function getSensorData() {
+      if (!isConnected) return;
+      
+      const uid = uidInput.value.trim();
+      const sensorTopic = sensorTopicInput.value.trim();
+      const protocol = document.querySelector('input[name="protocol"]:checked').value;
+      
+      if (!uid || !sensorTopic) {
+        addLog('请配置UID和传感器主题', true, true);
+        return;
+      }
+      
+      try {
+        // 巴法云获取主题最新消息API（修复：将getMessage改为getmsg）
+        const url = `https://apis.bemfa.com/va/getmsg?uid=${uid}&topic=${sensorTopic}&type=${protocol}`;
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json' // 明确要求JSON响应
+          },
+          mode: 'cors' // 处理跨域
+        });
+
+        // 先获取原始响应文本（关键：排查非JSON返回）
+        const rawResponse = await response.text();
+        addLog(`API原始响应: ${rawResponse}`, false, true); // 调试用
+        
+        // 尝试解析JSON
+        let result;
+        try {
+          result = JSON.parse(rawResponse);
+        } catch (parseError) {
+          addLog(`API返回非JSON格式: ${rawResponse}`, true, true);
+          addLog(`解析错误: ${parseError.message}`, true, true);
+          return;
+        }
+        
+        if (result.code === 0 && result.data && result.data.length > 0) {
+          // 修复：获取最新的消息内容（data是数组）
+          const sensorData = parseSensorData(result.data[0].msg);
+          if (sensorData) {
+            // 更新传感器状态显示
+            sensorStatus.className = 'status-indicator bg-green-500 ml-4 mr-2';
+            sensorText.textContent = '传感器已同步';
+            
+            // 更新设备数据显示 - 保持当前UI的模式、亮度和色温设置
+            const currentMode = parseInt(document.getElementById('currentMode').dataset.mode || 0);
+            const currentBrightness = parseInt(document.getElementById('brightnessSlider').value);
+            const currentColorTemp = parseInt(document.getElementById('colorTempSlider').value);
+            
+            updateDeviceData({
+              ...sensorData,
+              // 保持当前UI的模式设置，不被传感器数据覆盖
+              lightMode: currentMode,
+              // 保持当前UI的亮度设置，不被传感器数据覆盖
+              targetBrightness: (currentBrightness * 10),
+              // 保持当前UI的色温设置，不被传感器数据覆盖
+              colorTempRatio: currentColorTemp,
+              // 保持当前UI的灯效设置，不被传感器数据覆盖
+              ws2812Effect: currentEffect,
+              manualBrightness: currentBrightness,
+              // 保持当前UI的人体传感器影响设置，不被传感器数据覆盖
+              motionAffectsLight: document.getElementById('motionAffectToggle').checked
+            });
+            
+            // 更新最后更新时间
+            document.getElementById('lastUpdateTime').textContent = new Date().toLocaleTimeString();
+            addLog(`成功获取传感器数据: 光照=${sensorData.luxValue}lux, 滤波=${sensorData.filteredLuxValue}lux`, false, true);
+          }
+        } else if (result.code === 0 && result.data && result.data.length === 0) {
+          addLog('传感器数据为空，请检查设备是否正常上报数据', false, true);
+        } else {
+          addLog(`获取传感器数据失败: ${result.message || '未知错误'} (错误码: ${result.code})`, true, true);
+        }
+      } catch (e) {
+        addLog(`请求传感器数据失败: ${e.message}`, true, true);
+        // 网络错误/跨域错误补充提示
+        if (e.message.includes('CORS')) {
+          addLog('跨域错误：请检查巴法云API是否允许跨域访问，或使用代理服务器', true, true);
+        }
+      }
+    }
+    
+    // 断开设备
+    function disconnectDevice() {
+      // 清除定时器
+      if (sensorAutoRefreshInterval) {
+        clearInterval(sensorAutoRefreshInterval);
+        sensorAutoRefreshInterval = null;
+      }
+      if (autoSendInterval) {
+        clearInterval(autoSendInterval);
+        autoSendInterval = null;
+      }
+      
+      isConnected = false;
+      connectionStatus.className = 'status-indicator bg-red-500 mr-2';
+      connectionStatus.title = '已断开';
+      connectionText.textContent = '已断开';
+      connectBtn.innerHTML = '<i class="fa fa-plug mr-2"></i>连接设备';
+      connectBtn.disabled = false;
+      
+      addLog('设备已断开连接');
+    }
+    
+    // 连接设备
+    function connectDevice() {
+      const uid = uidInput.value.trim();
+      const controlTopic = controlTopicInput.value.trim();
+      const sensorTopic = sensorTopicInput.value.trim();
+      const protocol = document.querySelector('input[name="protocol"]:checked').value;
+      
+      if (!uid || !controlTopic || !sensorTopic) {
+        addLog('请输入UID、控制主题和传感器主题', true);
+        return;
+      }
+      
+      // 模拟连接过程
+      connectBtn.disabled = true;
+      connectBtn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>连接中...';
+      addLog('正在连接设备...');
+      
+      // 实际应用中应该验证连接有效性
+      setTimeout(() => {
+        isConnected = true;
+        connectionStatus.className = 'status-indicator bg-green-500 mr-2';
+        connectionStatus.title = '已连接';
+        connectionText.textContent = '已连接';
+        connectBtn.innerHTML = '<i class="fa fa-disconnect mr-2"></i>断开连接';
+        addLog('设备连接成功');
+        
+        // 更新连接时间
+        document.getElementById('connectionTime').textContent = new Date().toLocaleTimeString();
+        
+        // 识别设备类型（根据主题）
+        const deviceTypeNum = controlTopic.slice(-3);
+        const deviceTypes = {
+          '001': '插座设备',
+          '002': '灯泡设备',
+          '003': '风扇设备',
+          '004': '传感器设备',
+          '005': '空调设备',
+          '006': '开关设备',
+          '009': '窗帘设备'
+        };
+        document.getElementById('deviceType').textContent = deviceTypes[deviceTypeNum] || `未知设备(${deviceTypeNum})`;
+        
+        // 立即获取一次传感器数据
+        getSensorData();
+        
+        // 设置自动刷新传感器数据
+        setupSensorAutoRefresh();
+        
+        // 设置自动发送
+        setupAutoSend();
+        
+        // 开始模拟数据（仅用于演示，实际应注释掉）
+        // startDataSimulation();
+      }, 1500);
+    }
+    
+    // 设置传感器自动刷新
+    function setupSensorAutoRefresh() {
+      // 清除原有定时器
+      if (sensorDataInterval) {
+        clearInterval(sensorDataInterval);
+      }
+      
+      // 如果开启自动刷新
+      if (autoRefreshToggle.checked && isConnected) {
+        const interval = parseInt(refreshIntervalInput.value) * 1000;
+        sensorDataInterval = setInterval(getSensorData, interval);
+        addLog(`已设置传感器数据自动刷新，间隔${refreshIntervalInput.value}秒`, false, true);
+      }
+    }
+    
+    // 断开连接
+    function disconnectDevice() {
+      isConnected = false;
+      
+      // 停止所有定时器
+      if (dataSimulationInterval) clearInterval(dataSimulationInterval);
+      if (sensorDataInterval) clearInterval(sensorDataInterval);
+      
+      // 更新状态显示
+      connectionStatus.className = 'status-indicator bg-gray-300 mr-2';
+      connectionStatus.title = '未连接';
+      connectionText.textContent = '未连接';
+      sensorStatus.className = 'status-indicator bg-gray-300 ml-4 mr-2';
+      sensorText.textContent = '传感器未同步';
+      
+      connectBtn.innerHTML = '<i class="fa fa-connectdevelop mr-2"></i>连接设备';
+      connectBtn.disabled = false;
+      addLog('已断开设备连接');
+    }
+    
+    // 模拟数据接收（仅用于演示）
+    function startDataSimulation() {
+      // 初始化一些随机数据
+      const initialMotionAffect = document.getElementById('motionAffectToggle').checked;
+      updateDeviceData({
+        lightMode: 0,
+        adjustMode: 0,
+        luxValue: Math.floor(Math.random() * 500) + 50,
+        filteredLuxValue: Math.floor(Math.random() * 500) + 50,
+        manualBrightness: 70,
+        targetIlluminance: 300,
+        colorTempRatio: 50,
+        whiteOutput: 65,
+        warmOutput: 40,
+        currentWS2812Effect: 0,
+        motionDetected: false,
+        motionAffectsLight: initialMotionAffect
+      });
+      
+      // 定期更新数据
+      dataSimulationInterval = setInterval(() => {
+        const newData = {
+          lightMode: document.getElementById('currentMode').dataset.mode || 0,
+          adjustMode: Math.floor(Math.random() * 4),
+          luxValue: Math.max(0, Math.floor(parseInt(document.getElementById('currentLux').textContent) + (Math.random() * 40 - 20))),
+          filteredLuxValue: Math.max(0, Math.floor(parseInt(document.getElementById('filteredLux').textContent) + (Math.random() * 20 - 10))),
+          manualBrightness: parseInt(document.getElementById('brightnessValue').textContent),
+          targetIlluminance: 300,
+          colorTempRatio: parseInt(document.getElementById('colorTempSlider').value),
+          whiteOutput: Math.floor(Math.random() * 20) + parseInt(document.getElementById('brightnessValue').textContent) - 10,
+          warmOutput: Math.floor(Math.random() * 20) + (100 - parseInt(document.getElementById('brightnessValue').textContent)) - 10,
+          currentWS2812Effect: currentEffect,
+            motionDetected: Math.random() > 0.8,
+            motionAffectsLight: document.getElementById('motionAffectToggle').checked
+        };
+        
+        // 确保值在有效范围内
+        newData.whiteOutput = Math.max(0, Math.min(100, newData.whiteOutput));
+        newData.warmOutput = Math.max(0, Math.min(100, newData.warmOutput));
+        
+        updateDeviceData(newData);
+      }, 2000);
+    }
+    
+    // 设置传感器自动刷新
+    function setupSensorAutoRefresh() {
+      // 清除现有的定时器
+      if (sensorAutoRefreshInterval) {
+        clearInterval(sensorAutoRefreshInterval);
+        sensorAutoRefreshInterval = null;
+      }
+      
+      // 如果自动刷新开启，则设置新的定时器
+      if (autoRefreshToggle.checked) {
+        const interval = parseFloat(refreshIntervalInput.value) * 1000 || 5000; // 默认5秒
+        sensorAutoRefreshInterval = setInterval(() => {
+          if (isConnected) {
+            getSensorData();
+          }
+        }, interval);
+      }
+    }
+    
+    // 更新设备数据显示
+    function updateDeviceData(data) {
+      // 更新模式显示
+      const lightModes = ['自动模式', '手动模式', '关闭照明'];
+      document.getElementById('currentMode').textContent = lightModes[data.lightMode];
+      document.getElementById('currentMode').dataset.mode = data.lightMode;
+      
+      // 更新调节模式
+      const adjustModes = ['调光强', '调冷暖'];
+      document.getElementById('adjustMode').textContent = adjustModes[data.adjustMode];
+      
+      // 更新GPIO2状态
+      const gpio2StatusElement = document.getElementById('gpio2Status');
+      if (gpio2StatusElement) {
+        gpio2StatusElement.textContent = data.gpio2Value ? '高电平' : '低电平';
+      }
+      
+      // 更新光照数据
+      document.getElementById('currentLux').textContent = data.luxValue;
+      document.getElementById('filteredLux').textContent = data.filteredLuxValue;
+      
+      // 更新输出值
+      document.getElementById('whiteOutput').textContent = data.whiteOutput;
+      document.getElementById('warmOutput').textContent = data.warmOutput;
+      
+      // 更新亮度显示 - 优先使用传感器数据，否则使用UI当前值
+      const currentSliderVal = parseInt(document.getElementById('brightnessSlider').value);
+      const brightnessVal = data.targetBrightness ? Math.floor(data.targetBrightness / 10) : currentSliderVal;
+      document.getElementById('brightnessValue').textContent = brightnessVal;
+      document.getElementById('brightnessSlider').value = brightnessVal;
+      document.getElementById('brightnessLabel').textContent = data.lightMode === 1 ? '手动亮度' : '目标照度';
+      
+      // 更新色温 - 优先使用传感器数据，否则使用UI当前值
+      const currentColorTempVal = parseInt(document.getElementById('colorTempSlider').value);
+      const colorTempVal = data.colorTempRatio !== undefined ? data.colorTempRatio : currentColorTempVal;
+      document.getElementById('colorTempSlider').value = colorTempVal;
+      // 显示色温为百分比
+      document.getElementById('colorTempValue').textContent = `${colorTempVal}%`;
+      
+      // 更新WS2812灯效
+      currentEffect = data.ws2812Effect;
+      document.getElementById('ws2812Effect').textContent = `灯效 ${data.ws2812Effect}`;
+      
+      // 更新人体传感器状态
+      document.getElementById('motionSensorStatus').textContent = data.motionDetected ? '检测到运动' : '未检测到运动';
+      
+      // 更新人体传感器影响设置
+      document.getElementById('motionAffectToggle').checked = data.motionAffectsLight;
+      document.getElementById('motionAffectText').textContent = data.motionAffectsLight ? '开启' : '关闭';
+      
+      // 添加到图表
+      addToChart(data.luxValue, data.filteredLuxValue);
+    }
+    
+    // 添加数据到图表
+    function addToChart(luxValue, filteredLuxValue) {
+      const now = new Date();
+      const timeStr = `${now.getMinutes()}:${now.getSeconds().toString().padStart(2, '0')}`;
+      
+      luxData.push(luxValue);
+      if (luxChart.data.datasets[1].data) {
+        luxChart.data.datasets[1].data.push(filteredLuxValue);
+      }
+      timeLabels.push(timeStr);
+      
+      // 保持图表数据在30个点以内
+      if (luxData.length > 30) {
+        luxData.shift();
+        if (luxChart.data.datasets[1].data) {
+          luxChart.data.datasets[1].data.shift();
+        }
+        timeLabels.shift();
+      }
+      
+      // 更新图表
+      if (luxChart) {
+        luxChart.data.labels = timeLabels;
+        luxChart.data.datasets[0].data = luxData;
+        luxChart.update();
+      }
+    }
+    
+    // 发送控制指令到设备（增强错误处理版）
+    async function sendControlCommand(data) {
+      if (!isConnected) return;
+      
+      // 构建控制指令格式：#lightMode#brightness#colorTemp#ws2812Effect#motionAffectsLight#
+      const msg = `#${data.lightMode}#${data.brightness}#${data.colorTemp}#${data.effect}#${data.motionAffect ? 1 : 0}#`;
+      
+      const uid = uidInput.value.trim();
+      const controlTopic = controlTopicInput.value.trim();
+      const protocol = document.querySelector('input[name="protocol"]:checked').value;
+      
+      if (!uid || !controlTopic) {
+        addLog('请配置UID和控制主题', true);
+        return;
+      }
+      
+      try {
+        // 巴法云发送消息API，msg需要URL编码
+        const url = `https://apis.bemfa.com/va/sendMessage?uid=${uid}&topic=${controlTopic}&type=${protocol}&msg=${encodeURIComponent(msg)}`;
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          mode: 'cors'
+        });
+
+        const rawResponse = await response.text();
+        addLog(`发送指令API响应: ${rawResponse}`, false);
+        
+        let result;
+        try {
+          result = JSON.parse(rawResponse);
+        } catch (parseError) {
+          addLog(`发送指令API返回非JSON: ${rawResponse}`, true);
+          return;
+        }
+        
+        if (result.code === 0) {
+          addLog(`控制指令发送成功: ${msg}`);
+          // 发送指令后不立即刷新传感器数据，避免覆盖UI设置
+          // setTimeout(getSensorData, 500);
+        } else {
+          addLog(`控制指令发送失败: ${result.message || '未知错误'} (错误码: ${result.code})`, true);
+        }
+      } catch (error) {
+        addLog(`发送控制指令错误: ${error.message}`, true);
+        if (error.message.includes('CORS')) {
+          addLog('跨域错误：请检查巴法云API是否允许跨域访问', true);
+        }
+      }
+    }
+    
+    // 事件监听
+    document.addEventListener('DOMContentLoaded', () => {
+      // 获取DOM元素
+      connectBtn = document.getElementById('connectBtn');
+      uidInput = document.getElementById('uid');
+      controlTopicInput = document.getElementById('controlTopic');
+      sensorTopicInput = document.getElementById('sensorTopic');
+      connectionStatus = document.getElementById('connectionStatus');
+      connectionText = document.getElementById('connectionText');
+      sensorStatus = document.getElementById('sensorStatus');
+      sensorText = document.getElementById('sensorText');
+      messageLog = document.getElementById('messageLog');
+      clearLogBtn = document.getElementById('clearLogBtn');
+      syncSensorBtn = document.getElementById('syncSensorBtn');
+      helpBtn = document.getElementById('helpBtn');
+      helpModal = document.getElementById('helpModal');
+      closeHelpBtn = document.getElementById('closeHelpBtn');
+      autoRefreshToggle = document.getElementById('autoRefreshToggle');
+      autoRefreshText = document.getElementById('autoRefreshText');
+      refreshIntervalInput = document.getElementById('refreshInterval');
+      autoSendToggle = document.getElementById('autoSendToggle');
+      autoSendText = document.getElementById('autoSendText');
+      autoSendTimeInput = document.getElementById('autoSendTime');
+      
+      // 定时器变量
+      sensorAutoRefreshInterval = null;
+      autoSendInterval = null;
+      
+      // 获取登录相关元素
+      loginModal = document.getElementById('loginModal');
+      loginUsername = document.getElementById('loginUsername');
+      loginPassword = document.getElementById('loginPassword');
+      loginBtn = document.getElementById('loginBtn');
+      loginError = document.getElementById('loginError');
+      logoutBtn = document.getElementById('logoutBtn');
+      currentUser = document.getElementById('currentUser');
+      
+      // 页面加载时显示登录模态框
+      loginModal.classList.remove('hidden');
+      
+      // 初始化图表
+      initChart();
+      
+      // 初始化模式显示和dataset.mode属性
+      document.getElementById('currentMode').textContent = '自动模式';
+      document.getElementById('currentMode').dataset.mode = 0;
+      
+      // 登录按钮事件
+      loginBtn.addEventListener('click', () => {
+        const username = loginUsername.value.trim();
+        const password = loginPassword.value.trim();
+        
+        if (userData[username] && userData[username].password === password) {
+          // 登录成功
+          isLoggedIn = true;
+          loginError.classList.add('hidden');
+          loginModal.classList.add('hidden');
+          
+          // 填充用户配置
+          currentUser.textContent = username;
+          uidInput.value = userData[username].uid;
+          controlTopicInput.value = userData[username].controlTopic;
+          sensorTopicInput.value = userData[username].sensorTopic;
+          
+          addLog(`用户${username}登录成功`);
+        } else {
+          // 登录失败
+          loginError.classList.remove('hidden');
+        }
+      });
+      
+      // 登出按钮事件
+      logoutBtn.addEventListener('click', () => {
+        isLoggedIn = false;
+        loginModal.classList.remove('hidden');
+        loginUsername.value = '';
+        loginPassword.value = '';
+        loginError.classList.add('hidden');
+        
+        // 断开设备连接
+        if (isConnected) {
+          disconnectDevice();
+        }
+        
+        addLog('用户已登出');
+      });
+      
+      // 连接/断开按钮
+      connectBtn.addEventListener('click', () => {
+        if (!isLoggedIn) {
+          loginModal.classList.remove('hidden');
+          return;
+        }
+        
+        if (isConnected) {
+          disconnectDevice();
+        } else {
+          connectDevice();
+        }
+      });
+      
+      // 为所有控制按钮添加登录检查
+      document.querySelectorAll('.mode-btn, #brightnessSlider, #colorTempSlider, #ws2812Toggle').forEach(button => {
+        button.addEventListener('click', (e) => {
+          if (!isLoggedIn) {
+            loginModal.classList.remove('hidden');
+            e.preventDefault();
+          }
+        });
+      });
+      
+      // 为所有控制输入框添加登录检查
+      document.querySelectorAll('#brightnessSlider, #colorTempSlider, #refreshInterval').forEach(input => {
+        input.addEventListener('input', (e) => {
+          if (!isLoggedIn) {
+            loginModal.classList.remove('hidden');
+            e.preventDefault();
+          }
+        });
+      });
+      
+      // 手动同步传感器数据
+      syncSensorBtn.addEventListener('click', getSensorData);
+      
+      // 自动刷新开关
+      autoRefreshToggle.addEventListener('change', (e) => {
+        autoRefreshText.textContent = e.target.checked ? '开启' : '关闭';
+        setupSensorAutoRefresh();
+        addLog(`传感器自动刷新${e.target.checked ? '开启' : '关闭'}`, false, true);
+      });
+      
+      // 刷新间隔修改
+      refreshIntervalInput.addEventListener('change', () => {
+        setupSensorAutoRefresh();
+        addLog(`传感器刷新间隔设置为${refreshIntervalInput.value}秒`, false, true);
+      });
+      
+      // 自动发送模式切换
+      autoSendToggle.addEventListener('change', (e) => {
+        autoSendText.textContent = e.target.checked ? '开启' : '关闭';
+        setupAutoSend();
+        addLog(`自动发送模式${e.target.checked ? '开启' : '关闭'}`, false, true);
+      });
+      
+      // 自动发送时间修改
+      autoSendTimeInput.addEventListener('change', () => {
+        setupAutoSend();
+        addLog(`自动发送时间设置为${autoSendTimeInput.value}秒`, false, true);
+      });
+      
+      // 设置自动发送
+      function setupAutoSend() {
+        // 清除现有的定时器
+        if (autoSendInterval) {
+          clearInterval(autoSendInterval);
+          autoSendInterval = null;
+        }
+        
+        // 如果自动发送开启，则设置新的定时器
+        if (autoSendToggle.checked && isConnected) {
+          const interval = parseFloat(autoSendTimeInput.value) * 1000 || 10000; // 默认10秒
+          autoSendInterval = setInterval(() => {
+            if (isConnected) {
+              const lightMode = parseInt(document.getElementById('currentMode').dataset.mode || 0);
+              sendControlCommand({
+                lightMode,
+                brightness: brightnessSlider.value,
+                colorTemp: colorTempSlider.value,
+                effect: currentEffect,
+                motionAffect: document.getElementById('motionAffectToggle').checked
+              });
+            }
+          }, interval);
+        }
+      }
+      
+      // 亮度控制
+      const brightnessSlider = document.getElementById('brightnessSlider');
+      const brightnessValue = document.getElementById('brightnessValue');
+      
+      brightnessSlider.addEventListener('input', () => {
+        brightnessValue.textContent = brightnessSlider.value;
+        if (isConnected) {
+          const lightMode = parseInt(document.getElementById('currentMode').dataset.mode || 0);
+          sendControlCommand({
+            lightMode,
+            brightness: brightnessSlider.value,
+            colorTemp: document.getElementById('colorTempSlider').value,
+            effect: currentEffect,
+            motionAffect: document.getElementById('motionAffectToggle').checked
+          });
+        }
+      });
+      
+      // 亮度增减按钮
+      document.getElementById('brightnessMinus').addEventListener('click', () => {
+        let val = parseInt(brightnessSlider.value);
+        val = Math.max(0, val - 5);
+        brightnessSlider.value = val;
+        brightnessValue.textContent = val;
+        if (isConnected) {
+          const lightMode = parseInt(document.getElementById('currentMode').dataset.mode || 0);
+          sendControlCommand({
+            lightMode,
+            brightness: val,
+            colorTemp: document.getElementById('colorTempSlider').value,
+            effect: currentEffect,
+            motionAffect: document.getElementById('motionAffectToggle').checked
+          });
+        }
+      });
+      
+      document.getElementById('brightnessPlus').addEventListener('click', () => {
+        let val = parseInt(brightnessSlider.value);
+        val = Math.min(100, val + 5);
+        brightnessSlider.value = val;
+        brightnessValue.textContent = val;
+        if (isConnected) {
+          const lightMode = parseInt(document.getElementById('currentMode').dataset.mode || 0);
+          sendControlCommand({
+            lightMode,
+            brightness: val,
+            colorTemp: document.getElementById('colorTempSlider').value,
+            effect: currentEffect,
+            motionAffect: document.getElementById('motionAffectToggle').checked
+          });
+        }
+      });
+      
+      // 色温控制
+      const colorTempSlider = document.getElementById('colorTempSlider');
+      const colorTempValue = document.getElementById('colorTempValue');
+      
+      // 初始化色温显示为百分比
+      colorTempValue.textContent = `${colorTempSlider.value}%`;
+      
+      colorTempSlider.addEventListener('input', () => {
+        // 显示色温为百分比
+        colorTempValue.textContent = `${colorTempSlider.value}%`;
+        if (isConnected) {
+          const lightMode = parseInt(document.getElementById('currentMode').dataset.mode || 0);
+          sendControlCommand({
+            lightMode,
+            brightness: brightnessSlider.value,
+            colorTemp: colorTempSlider.value,
+            effect: currentEffect,
+            motionAffect: document.getElementById('motionAffectToggle').checked
+          });
+        }
+      });
+      
+      // 色温增减按钮
+      document.getElementById('tempMinus').addEventListener('click', () => {
+        let val = parseInt(colorTempSlider.value);
+        val = Math.max(0, val - 5);
+        colorTempSlider.value = val;
+        // 显示色温为百分比
+        colorTempValue.textContent = `${val}%`;
+        if (isConnected) {
+          const lightMode = parseInt(document.getElementById('currentMode').dataset.mode || 0);
+          sendControlCommand({
+            lightMode,
+            brightness: brightnessSlider.value,
+            colorTemp: val,
+            effect: currentEffect,
+            motionAffect: document.getElementById('motionAffectToggle').checked
+          });
+        }
+      });
+      
+      document.getElementById('tempPlus').addEventListener('click', () => {
+        let val = parseInt(colorTempSlider.value);
+        val = Math.min(100, val + 5);
+        colorTempSlider.value = val;
+        // 显示色温为百分比
+        colorTempValue.textContent = `${val}%`;
+        if (isConnected) {
+          const lightMode = parseInt(document.getElementById('currentMode').dataset.mode || 0);
+          sendControlCommand({
+            lightMode,
+            brightness: brightnessSlider.value,
+            colorTemp: val,
+            effect: currentEffect,
+            motionAffect: document.getElementById('motionAffectToggle').checked
+          });
+        }
+      });
+      
+      // 模式按钮
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const mode = parseInt(btn.dataset.mode);
+          if (isConnected) {
+            // 更新页面上的模式显示和dataset.mode属性
+            const lightModes = ['自动模式', '手动模式', '关闭照明'];
+            document.getElementById('currentMode').textContent = lightModes[mode];
+            document.getElementById('currentMode').dataset.mode = mode;
+            
+            sendControlCommand({
+              lightMode: mode,
+              brightness: brightnessSlider.value,
+              colorTemp: colorTempSlider.value,
+              effect: currentEffect,
+              motionAffect: document.getElementById('motionAffectToggle').checked
+            });
+            addLog(`切换到${mode === 0 ? '自动' : mode === 1 ? '手动' : '关闭照明'}模式`);
+          }
+        });
+      });
+      
+      // 灯效控制
+      document.getElementById('prevEffect').addEventListener('click', () => {
+        currentEffect = (currentEffect - 1 + MAX_EFFECTS) % MAX_EFFECTS;
+        if (isConnected) {
+          sendControlCommand({
+            lightMode: parseInt(document.getElementById('currentMode').dataset.mode || 0),
+            brightness: brightnessSlider.value,
+            colorTemp: colorTempSlider.value,
+            effect: currentEffect,
+            motionAffect: document.getElementById('motionAffectToggle').checked
+          });
+          addLog(`切换到上一个灯效 (${currentEffect})`);
+        }
+      });
+      
+      document.getElementById('nextEffect').addEventListener('click', () => {
+        currentEffect = (currentEffect + 1) % MAX_EFFECTS;
+        if (isConnected) {
+          sendControlCommand({
+            lightMode: parseInt(document.getElementById('currentMode').dataset.mode || 0),
+            brightness: brightnessSlider.value,
+            colorTemp: colorTempSlider.value,
+            effect: currentEffect,
+            motionAffect: document.getElementById('motionAffectToggle').checked
+          });
+          addLog(`切换到下一个灯效 (${currentEffect})`);
+        }
+      });
+      
+      document.getElementById('stopEffect').addEventListener('click', () => {
+        currentEffect = 0;
+        if (isConnected) {
+          sendControlCommand({
+            lightMode: parseInt(document.getElementById('currentMode').dataset.mode || 0),
+            brightness: brightnessSlider.value,
+            colorTemp: colorTempSlider.value,
+            effect: 0,
+            motionAffect: document.getElementById('motionAffectToggle').checked
+          });
+          addLog('停止WS2812灯效');
+        }
+      });
+      
+      // 人体传感器影响切换
+      document.getElementById('motionAffectToggle').addEventListener('change', (e) => {
+        document.getElementById('motionAffectText').textContent = e.target.checked ? '开启' : '关闭';
+        if (isConnected) {
+          sendControlCommand({
+            lightMode: parseInt(document.getElementById('currentMode').dataset.mode || 0),
+            brightness: brightnessSlider.value,
+            colorTemp: colorTempSlider.value,
+            effect: currentEffect,
+            motionAffect: e.target.checked
+          });
+          addLog(`人体传感器影响已${e.target.checked ? '开启' : '关闭'}`);
+        }
+      });
+      
+      // 清空日志
+      clearLogBtn.addEventListener('click', () => {
+        messageLog.innerHTML = '<div class="text-gray-500"><i class="fa fa-info-circle mr-1"></i> 日志已清空</div>';
+      });
+      
+      // 帮助模态框
+      helpBtn.addEventListener('click', () => {
+        helpModal.classList.remove('hidden');
+      });
+      
+      closeHelpBtn.addEventListener('click', () => {
+        helpModal.classList.add('hidden');
+      });
+      
+      // 点击模态框外部关闭
+      helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) {
+          helpModal.classList.add('hidden');
+        }
+      });
+    });
+  </script>
+  <!-- 页脚版权信息 -->
+  <footer class="bg-gray-800 text-white py-4 mt-auto">
+    <div class="container mx-auto px-4 text-center">
+      <p>@2025 Max_unterwegs</p>
+    </div>
+  </footer>
+</body>
+</html>
