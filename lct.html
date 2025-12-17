@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能灯光控制系统流程图</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+        }
+        .mermaid-container {
+            background-color: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+        .mermaid {
+            font-family: Arial, sans-serif;
+        }
+    </style>
+    <!-- 引入mermaid.js库 -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.2.4/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <h1>智能灯光控制系统流程图</h1>
+
+    <h2>1. 系统类图</h2>
+    <div class="mermaid-container">
+        <div class="mermaid">
+classDiagram
+    %% 主程序类
+    class Lampe {
+        - BH1750Sensor lightSensor1, lightSensor2
+        - LightFilter lightFilter
+        - SerialComm btKontakt
+        - MotionSensor motionSensor
+        - LED ledControl1, ledControl2
+        - KeyControl touchSensorT1, T7, T8, T9
+        - LEDFuzzyDimmer fuzzyDimmer
+        - WS2812FXControl ws2812Strip
+        - TCPComm tcpComm
+        - LightMode g_lightMode
+        - AdjustMode g_adjustMode
+        + setup()
+        + loop()
+    }
+
+    %% 传感器类
+    class BH1750Sensor {
+        - BH1750 lightMeter
+        - float lux
+        - uint8_t mtreg
+        - uint8_t i2cAddress
+        - bool initialized
+        + init(uint8_t address)
+        + update()
+        + getLux()
+        + autoAdjustMTreg()
+    }
+
+    class LightFilter {
+        - int* medianWindow
+        - int windowSize
+        - int headIndex
+        - int count
+        - bool windowFull
+        - float kalmanGain
+        - float estimate
+        - float errorEstimate
+        - float errorMeasurement
+        - float processNoise
+        + init(int winSize, float measError, float procNoise)
+        + update(int lightValue)
+        + getFilteredValue()
+        - quickSort(int arr[], int low, int high)
+    }
+
+    class MotionSensor {
+        - int sensorPin
+        - bool motionDetected
+        - unsigned long lastMotionTime
+        - unsigned long holdTime
+        + init(int pin, unsigned long holdTimeMs)
+        + update()
+        + isMotionDetected()
+    }
+
+    %% 控制类
+    class LED {
+        - int ledPin
+        - int targetBrightness
+        - int currentBrightness
+        - int brightnessStep
+        + init(int pin, int step)
+        + setTargetBrightness(int brightness)
+        + update()
+        + getCurrentBrightness()
+    }
+
+    class KeyControl {
+        - int touchPin
+        - bool touchedEvent
+        - int touchThreshold
+        - int touchValue
+        + init(int pin, int threshold)
+        + update()
+        + hasTouchedEvent()
+        + isTouched()
+        + getTouchValue()
+    }
+
+    class LEDFuzzyDimmer {
+        - FuzzyControl _fuzzyCtrl
+        - bool _fuzzyInited
+        - uint16_t _targetIlluminance
+        - float _previousError
+        - uint8_t _lastPwmValue
+        - unsigned long _lastUpdateTime
+        + begin()
+        + update(uint16_t currentIlluminance)
+        + setTargetIlluminance(uint16_t target)
+        + increaseTargetIlluminance()
+        + decreaseTargetIlluminance()
+    }
+
+    class WS2812FXControl {
+        - WS2812FX* ws2812fx
+        - uint8_t dataPin
+        - uint16_t numPixels
+        - uint8_t brightness
+        - uint32_t currentColor
+        - uint8_t speed
+        - bool initialized
+        + init(uint8_t dataPin, uint16_t numPixels, uint8_t brightness)
+        + update()
+        + setEffect(WS2812FXEffect effect)
+        + setBrightness(uint8_t brightness)
+        + setColor(uint32_t color)
+    }
+
+    %% 通信类
+    class SerialComm {
+        - BLEService serialService
+        - BLECharacteristic dataCharacteristic
+        - bool initialized
+        + init()
+        + sendLightData(float lux, float filteredLux, float fuzzyOutput)
+        + sendMessage(const char* message)
+    }
+
+    class TCPComm {
+        - String ssid, password
+        - String serverAddr, serverPort
+        - String uid, sensorTopic, lightTopic
+        - WiFiClient tcpClient
+        + init(const String& wifiSsid, const String& wifiPassword, const String& addr, const String& port, const String& userUid, const String& sensorT, const String& lightT)
+        + isTCPConnected()
+        + sendSensorData(const String& data)
+        + sendHeartbeat()
+    }
+
+    %% 枚举定义
+    class LightMode {
+        <<enumeration>>
+        AUTO_MODE
+        MANUAL_MODE
+        OFF_MODE
+    }
+
+    class AdjustMode {
+        <<enumeration>>
+        BRIGHTNESS_ADJUST
+        COLOR_TEMP_ADJUST
+        WS2812_ADJUST
+        MOTION_CONFIG_ADJUST
+    }
+
+    class WS2812FXEffect {
+        <<enumeration>>
+        WS2812FX_OFF
+        WS2812FX_RAINBOW_CYCLE
+        WS2812FX_BREATHING
+        WS2812FX_METEOR_RAIN
+        WS2812FX_SCANNER
+        WS2812FX_COLOR_WIPE
+    }
+
+    %% 类之间的关系
+    Lampe --> BH1750Sensor
+    Lampe --> LightFilter
+    Lampe --> SerialComm
+    Lampe --> MotionSensor
+    Lampe --> LED
+    Lampe --> KeyControl
+    Lampe --> LEDFuzzyDimmer
+    Lampe --> WS2812FXControl
+    Lampe --> TCPComm
+    BH1750Sensor --> LightFilter
+    LightFilter --> LEDFuzzyDimmer
+    LEDFuzzyDimmer --> LED
+    KeyControl --> LEDFuzzyDimmer
+    BH1750Sensor --> SerialComm
+    BH1750Sensor --> TCPComm
+    LEDFuzzyDimmer --> SerialComm
+    LEDFuzzyDimmer --> TCPComm
+        </div>
+    </div>
+
+    <h2>2. 主循环与任务流程图</h2>
+    <div class="mermaid-container">
+        <div class="mermaid">
+            graph TD
+                A[主循环] --> B[光照传感器任务]
+                A --> C[运动检测任务]
+                A --> D[触摸输入任务]
+                A --> E[模糊控制任务]
+                A --> F[LED调节任务]
+                A --> G[蓝牙通信任务]
+                A --> H[TCP通信任务]
+                A --> I[WS2812FX控制任务]
+                A --> J[OLED显示任务]
+
+                B --> K[BH1750传感器数据采集]
+                K --> L[光照数据滤波处理]
+                L --> M[更新滤波后光照值]
+
+                C --> N[人体红外检测]
+                N --> O[更新无人状态时间]
+                O --> P[触发LED开关控制]
+
+                D --> Q[触摸按键状态检测]
+                Q --> R[去抖动处理]
+                R --> S[触发模式切换/亮度调节]
+
+                E --> T[读取当前光照值]
+                T --> U[执行模糊规则计算]
+                U --> V[生成LED亮度目标值]
+
+                F --> W[平滑调节LED亮度]
+                W --> X[更新PWM输出值]
+
+                G --> Y[发送光照数据]
+                Y --> Z[接收蓝牙控制命令]
+
+                H --> AA[WiFi连接管理]
+                AA --> BB[TCP数据传输]
+                BB --> CC[接收网络控制命令]
+
+                I --> DD[WS2812FX灯效控制]
+                DD --> EE[更新灯带效果]
+
+                J --> FF[显示系统状态]
+                FF --> GG[更新OLED显示内容]
+
+                M --> U
+                O --> U
+                S --> U
+                V --> W
+        </div>
+    </div>
+
+    <script>
+        // 配置mermaid渲染选项
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            classDiagram: {
+                useMaxWidth: true,
+                htmlLabels: true
+            },
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'cardinal'
+            }
+        });
+    </script>
+</body>
+</html>
