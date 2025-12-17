@@ -39,182 +39,133 @@
     <h2>1. 系统类图</h2>
     <div class="mermaid-container">
         <div class="mermaid">
-classDiagram
-    %% 主程序类
-    class Lampe {
-        - BH1750Sensor lightSensor1, lightSensor2
-        - LightFilter lightFilter
-        - SerialComm btKontakt
-        - MotionSensor motionSensor
-        - LED ledControl1, ledControl2
-        - KeyControl touchSensorT1, T7, T8, T9
-        - LEDFuzzyDimmer fuzzyDimmer
-        - WS2812FXControl ws2812Strip
-        - TCPComm tcpComm
-        - LightMode g_lightMode
-        - AdjustMode g_adjustMode
-        + setup()
-        + loop()
-    }
+            classDiagram
+                direction BT
+                
+                class Lampe {
+                    +setup() void
+                    +loop() void
+                    +lightSensorTask() void
+                    +motionDetectTask() void
+                    +touchInputTask() void
+                    +fuzzyControlTask() void
+                    +ledAdjustTask() void
+                    +btCommTask() void
+                    +tcpCommTask() void
+                    +ws2812fxTask() void
+                    +oledDisplayTask() void
+                }
 
-    %% 传感器类
-    class BH1750Sensor {
-        - BH1750 lightMeter
-        - float lux
-        - uint8_t mtreg
-        - uint8_t i2cAddress
-        - bool initialized
-        + init(uint8_t address)
-        + update()
-        + getLux()
-        + autoAdjustMTreg()
-    }
+                class BH1750Sensor {
+                    -float lux
+                    -uint8_t mtreg
+                    -uint8_t i2cAddress
+                    -bool initialized
+                    +init(uint8_t address) bool
+                    +update() bool
+                    +getLux() float
+                    +autoAdjustMTreg() bool
+                }
 
-    class LightFilter {
-        - int* medianWindow
-        - int windowSize
-        - int headIndex
-        - int count
-        - bool windowFull
-        - float kalmanGain
-        - float estimate
-        - float errorEstimate
-        - float errorMeasurement
-        - float processNoise
-        + init(int winSize, float measError, float procNoise)
-        + update(int lightValue)
-        + getFilteredValue()
-        - quickSort(int arr[], int low, int high)
-    }
+                class LightFilter {
+                    -int* medianWindow
+                    -int windowSize
+                    -float estimate
+                    -float errorEstimate
+                    -float errorMeasurement
+                    -float processNoise
+                    +init(int winSize, float measError, float procNoise) void
+                    +update(int lightValue) void
+                    +getFilteredValue() int
+                }
 
-    class MotionSensor {
-        - int sensorPin
-        - bool motionDetected
-        - unsigned long lastMotionTime
-        - unsigned long holdTime
-        + init(int pin, unsigned long holdTimeMs)
-        + update()
-        + isMotionDetected()
-    }
+                class SerialComm {
+                    -float lux
+                    -float filteredLux
+                    -float fuzzyOutput
+                    +init() bool
+                    +updateData(float lux, float filteredLux, float fuzzyOutput) void
+                    +sendData() void
+                    +isConnected() bool
+                }
 
-    %% 控制类
-    class LED {
-        - int ledPin
-        - int targetBrightness
-        - int currentBrightness
-        - int brightnessStep
-        + init(int pin, int step)
-        + setTargetBrightness(int brightness)
-        + update()
-        + getCurrentBrightness()
-    }
+                class MotionSensor {
+                    -int sensorPin
+                    -bool motionDetected
+                    -unsigned long lastMotionTime
+                    +init(int pin, unsigned long holdTimeMs) void
+                    +update() void
+                    +isMotionDetected() bool
+                }
 
-    class KeyControl {
-        - int touchPin
-        - bool touchedEvent
-        - int touchThreshold
-        - int touchValue
-        + init(int pin, int threshold)
-        + update()
-        + hasTouchedEvent()
-        + isTouched()
-        + getTouchValue()
-    }
+                class LED {
+                    -int ledPin
+                    -int targetBrightness
+                    -int currentBrightness
+                    -int brightnessStep
+                    +init(int pin, int step) void
+                    +setTargetBrightness(int brightness) void
+                    +update() void
+                    +getCurrentBrightness() int
+                }
 
-    class LEDFuzzyDimmer {
-        - FuzzyControl _fuzzyCtrl
-        - bool _fuzzyInited
-        - uint16_t _targetIlluminance
-        - float _previousError
-        - uint8_t _lastPwmValue
-        - unsigned long _lastUpdateTime
-        + begin()
-        + update(uint16_t currentIlluminance)
-        + setTargetIlluminance(uint16_t target)
-        + increaseTargetIlluminance()
-        + decreaseTargetIlluminance()
-    }
+                class KeyControl {
+                    -int touchPin
+                    -bool touchedEvent
+                    -int touchThreshold
+                    +init(int pin, int threshold) void
+                    +update() void
+                    +hasTouchedEvent() bool
+                    +isTouched() bool
+                }
 
-    class WS2812FXControl {
-        - WS2812FX* ws2812fx
-        - uint8_t dataPin
-        - uint16_t numPixels
-        - uint8_t brightness
-        - uint32_t currentColor
-        - uint8_t speed
-        - bool initialized
-        + init(uint8_t dataPin, uint16_t numPixels, uint8_t brightness)
-        + update()
-        + setEffect(WS2812FXEffect effect)
-        + setBrightness(uint8_t brightness)
-        + setColor(uint32_t color)
-    }
+                class LEDFuzzyDimmer {
+                    -int _targetIlluminance
+                    -int _lastPwmValue
+                    +begin() bool
+                    +setTargetIlluminance(int target) void
+                    +update(int currentIlluminance) int
+                    +getLastPwmValue() int
+                }
 
-    %% 通信类
-    class SerialComm {
-        - BLEService serialService
-        - BLECharacteristic dataCharacteristic
-        - bool initialized
-        + init()
-        + sendLightData(float lux, float filteredLux, float fuzzyOutput)
-        + sendMessage(const char* message)
-    }
+                class TCPComm {
+                    -String ssid
+                    -String password
+                    -String serverAddr
+                    -WiFiClient tcpClient
+                    +init(String& wifiSsid, String& wifiPassword, String& addr, String& port, String& userUid, String& sensorT, String& lightT) bool
+                    +isTCPConnected() bool
+                    +sendData(String& topic, String& data) bool
+                    +receiveData() String
+                }
 
-    class TCPComm {
-        - String ssid, password
-        - String serverAddr, serverPort
-        - String uid, sensorTopic, lightTopic
-        - WiFiClient tcpClient
-        + init(const String& wifiSsid, const String& wifiPassword, const String& addr, const String& port, const String& userUid, const String& sensorT, const String& lightT)
-        + isTCPConnected()
-        + sendSensorData(const String& data)
-        + sendHeartbeat()
-    }
+                class WS2812FXControl {
+                    -WS2812FX* ws2812fx
+                    -uint8_t dataPin
+                    -uint16_t numPixels
+                    -uint8_t brightness
+                    +init(uint8_t dataPin, uint16_t numPixels, uint8_t brightness) bool
+                    +update() void
+                    +setEffect(uint8_t effect) void
+                    +setBrightness(uint8_t brightness) void
+                }
 
-    %% 枚举定义
-    class LightMode {
-        <<enumeration>>
-        AUTO_MODE
-        MANUAL_MODE
-        OFF_MODE
-    }
-
-    class AdjustMode {
-        <<enumeration>>
-        BRIGHTNESS_ADJUST
-        COLOR_TEMP_ADJUST
-        WS2812_ADJUST
-        MOTION_CONFIG_ADJUST
-    }
-
-    class WS2812FXEffect {
-        <<enumeration>>
-        WS2812FX_OFF
-        WS2812FX_RAINBOW_CYCLE
-        WS2812FX_BREATHING
-        WS2812FX_METEOR_RAIN
-        WS2812FX_SCANNER
-        WS2812FX_COLOR_WIPE
-    }
-
-    %% 类之间的关系
-    Lampe --> BH1750Sensor
-    Lampe --> LightFilter
-    Lampe --> SerialComm
-    Lampe --> MotionSensor
-    Lampe --> LED
-    Lampe --> KeyControl
-    Lampe --> LEDFuzzyDimmer
-    Lampe --> WS2812FXControl
-    Lampe --> TCPComm
-    BH1750Sensor --> LightFilter
-    LightFilter --> LEDFuzzyDimmer
-    LEDFuzzyDimmer --> LED
-    KeyControl --> LEDFuzzyDimmer
-    BH1750Sensor --> SerialComm
-    BH1750Sensor --> TCPComm
-    LEDFuzzyDimmer --> SerialComm
-    LEDFuzzyDimmer --> TCPComm
+                Lampe --> BH1750Sensor
+                Lampe --> LightFilter
+                Lampe --> SerialComm
+                Lampe --> MotionSensor
+                Lampe --> LED
+                Lampe --> KeyControl
+                Lampe --> LEDFuzzyDimmer
+                Lampe --> TCPComm
+                Lampe --> WS2812FXControl
+                BH1750Sensor --> LightFilter
+                LightFilter --> LEDFuzzyDimmer
+                LEDFuzzyDimmer --> LED
+                MotionSensor --> LEDFuzzyDimmer
+                KeyControl --> LEDFuzzyDimmer
+                LEDFuzzyDimmer --> SerialComm
+                LEDFuzzyDimmer --> TCPComm
         </div>
     </div>
 
