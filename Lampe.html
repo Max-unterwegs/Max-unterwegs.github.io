@@ -308,7 +308,7 @@
           <div>
             <div class="flex justify-between text-sm mb-1">
               <span id="brightnessLabel">亮度值</span>
-              <span id="brightnessValue">0%</span>
+              <span id="brightnessValue">0</span>
             </div>
             <input type="range" id="brightnessSlider" min="0" max="100" value="50" 
                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary">
@@ -938,7 +938,7 @@
       // 更新亮度显示 - 优先使用传感器数据，否则使用UI当前值
       const currentSliderVal = parseInt(document.getElementById('brightnessSlider').value);
       const brightnessVal = data.targetBrightness ? Math.floor(data.targetBrightness / 10) : currentSliderVal;
-      document.getElementById('brightnessValue').textContent = `${brightnessVal}%`;
+      document.getElementById('brightnessValue').textContent = brightnessVal;
       document.getElementById('brightnessSlider').value = brightnessVal;
       document.getElementById('brightnessLabel').textContent = data.lightMode === 1 ? '手动亮度' : '目标照度';
       
@@ -996,10 +996,8 @@
     async function sendControlCommand(data) {
       if (!isConnected) return;
       
-      // 将亮度值从0-100映射到0-255
-      const brightness255 = Math.round((parseInt(data.brightness) / 100) * 255);
       // 构建控制指令格式：#lightMode#brightness#colorTemp#ws2812Effect#motionAffectsLight#
-      const msg = `#${data.lightMode}#${brightness255}#${data.colorTemp}#${data.effect}#${data.motionAffect ? 1 : 0}#`;
+      const msg = `#${data.lightMode}#${data.brightness}#${data.colorTemp}#${data.effect}#${data.motionAffect ? 1 : 0}#`;
       
       const uid = uidInput.value.trim();
       const controlTopic = controlTopicInput.value.trim();
@@ -1136,6 +1134,26 @@
         addLog('用户已登出');
       });
       
+      // 协议切换事件监听器
+      document.querySelectorAll('input[name="protocol"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          const protocol = e.target.value;
+          const controlTopicInput = document.getElementById('controlTopic');
+          const sensorTopicInput = document.getElementById('sensorTopic');
+          
+          // 根据协议类型更新主题
+          if (protocol === '1') { // MQTT协议
+            controlTopicInput.value = 'fhNNUsYxv002';
+            sensorTopicInput.value = 'j9pO3LWdV004';
+          } else { // TCP协议
+            controlTopicInput.value = 'sphdL3y7o002';
+            sensorTopicInput.value = 'Xc4E8faNz004';
+          }
+          
+          addLog(`切换到${protocol === '1' ? 'MQTT' : 'TCP'}协议，主题已更新`);
+        });
+      });
+      
       // 连接/断开按钮
       connectBtn.addEventListener('click', () => {
         if (!isLoggedIn) {
@@ -1230,7 +1248,7 @@
       const brightnessValue = document.getElementById('brightnessValue');
       
       brightnessSlider.addEventListener('input', () => {
-        brightnessValue.textContent = `${brightnessSlider.value}%`;
+        brightnessValue.textContent = brightnessSlider.value;
         if (isConnected) {
           const lightMode = parseInt(document.getElementById('currentMode').dataset.mode || 0);
           sendControlCommand({
@@ -1248,7 +1266,7 @@
         let val = parseInt(brightnessSlider.value);
         val = Math.max(0, val - 5);
         brightnessSlider.value = val;
-        brightnessValue.textContent = `${val}%`;
+        brightnessValue.textContent = val;
         if (isConnected) {
           const lightMode = parseInt(document.getElementById('currentMode').dataset.mode || 0);
           sendControlCommand({
@@ -1265,7 +1283,7 @@
         let val = parseInt(brightnessSlider.value);
         val = Math.min(100, val + 5);
         brightnessSlider.value = val;
-        brightnessValue.textContent = `${val}%`;
+        brightnessValue.textContent = val;
         if (isConnected) {
           const lightMode = parseInt(document.getElementById('currentMode').dataset.mode || 0);
           sendControlCommand({
